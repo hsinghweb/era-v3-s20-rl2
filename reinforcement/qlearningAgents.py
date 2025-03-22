@@ -41,8 +41,9 @@ class QLearningAgent(ReinforcementAgent):
     def __init__(self, **args):
         "You can initialize Q-values here..."
         ReinforcementAgent.__init__(self, **args)
-
-        "*** YOUR CODE HERE ***"
+        
+        # Initialize Q-values as a nested Counter
+        self.qValues = util.Counter()  # A Counter is a dict with default 0
 
     def getQValue(self, state, action):
         """
@@ -50,8 +51,9 @@ class QLearningAgent(ReinforcementAgent):
           Should return 0.0 if we have never seen a state
           or the Q node value otherwise
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Return the Q-value for the state-action pair
+        # Counter automatically returns 0.0 for never-seen state-action pairs
+        return self.qValues[(state, action)]
 
 
     def computeValueFromQValues(self, state):
@@ -61,8 +63,20 @@ class QLearningAgent(ReinforcementAgent):
           there are no legal actions, which is the case at the
           terminal state, you should return a value of 0.0.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Get legal actions in this state
+        legalActions = self.getLegalActions(state)
+        
+        # If no legal actions (terminal state), return 0.0
+        if not legalActions:
+            return 0.0
+            
+        # Find maximum Q-value over all legal actions
+        maxQ = float("-inf")
+        for action in legalActions:
+            q_value = self.getQValue(state, action)
+            maxQ = max(maxQ, q_value)
+            
+        return maxQ
 
     def computeActionFromQValues(self, state):
         """
@@ -70,8 +84,29 @@ class QLearningAgent(ReinforcementAgent):
           are no legal actions, which is the case at the terminal state,
           you should return None.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Get legal actions in this state
+        legalActions = self.getLegalActions(state)
+        
+        # If no legal actions (terminal state), return None
+        if not legalActions:
+            return None
+            
+        # Find action with maximum Q-value
+        maxQ = float("-inf")
+        bestAction = None
+        
+        # Check each legal action
+        for action in legalActions:
+            q_value = self.getQValue(state, action)
+            # Update best action if this Q-value is higher
+            if q_value > maxQ:
+                maxQ = q_value
+                bestAction = action
+            # Break ties randomly
+            elif q_value == maxQ and random.random() < 0.5:
+                bestAction = action
+                
+        return bestAction
 
     def getAction(self, state):
         """
@@ -84,25 +119,52 @@ class QLearningAgent(ReinforcementAgent):
           HINT: You might want to use util.flipCoin(prob)
           HINT: To pick randomly from a list, use random.choice(list)
         """
-        # Pick Action
+        # Get legal actions
         legalActions = self.getLegalActions(state)
         action = None
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
-
+        
+        # Return None if no legal actions
+        if not legalActions:
+            return action
+        
+        # Epsilon-greedy action selection
+        if util.flipCoin(self.epsilon):
+            # Random action
+            action = random.choice(legalActions)
+        else:
+            # Best policy action
+            action = self.getPolicy(state)
+        
         return action
 
     def update(self, state, action, nextState, reward):
         """
           The parent class calls this to observe a
           state = action => nextState and reward transition.
-          You should do your Q-Value update here
-
-          NOTE: You should never call this function,
-          it will be called on your behalf
+          You should do your Q-Value update here using the Q-learning update rule:
+          Q(s,a) = Q(s,a) + alpha * [R + gamma * maxQ(s',a') - Q(s,a)]
+          
+          alpha = learning rate
+          gamma = discount factor
+          R = reward
+          maxQ(s',a') = maximum Q-value for any action in the next state
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Get the current Q-value
+        currentQ = self.getQValue(state, action)
+        
+        # Get the maximum Q-value for the next state
+        nextMaxQ = self.computeValueFromQValues(nextState)
+        
+        # Calculate the temporal difference target
+        # reward + (discount * next state's max Q-value)
+        target = reward + (self.discount * nextMaxQ)
+        
+        # Update the Q-value using the learning rate (alpha)
+        # Q(s,a) = Q(s,a) + alpha * [target - Q(s,a)]
+        newQ = currentQ + self.alpha * (target - currentQ)
+        
+        # Store the new Q-value
+        self.qValues[(state, action)] = newQ
 
     def getPolicy(self, state):
         return self.computeActionFromQValues(state)
@@ -164,15 +226,32 @@ class ApproximateQAgent(PacmanQAgent):
           Should return Q(state,action) = w * featureVector
           where * is the dotProduct operator
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        features = self.featExtractor.getFeatures(state, action)
+        return features * self.weights
 
     def update(self, state, action, nextState, reward):
         """
            Should update your weights based on transition
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Get the feature vector for current state-action pair
+        features = self.featExtractor.getFeatures(state, action)
+        
+        # Get the current Q-value
+        currentQ = self.getQValue(state, action)
+        
+        # Get the maximum Q-value for the next state
+        nextMaxQ = self.computeValueFromQValues(nextState)
+        
+        # Calculate the temporal difference target
+        # reward + (discount * next state's max Q-value)
+        target = reward + (self.discount * nextMaxQ)
+        
+        # Calculate the difference between target and current Q-value
+        difference = target - currentQ
+        
+        # Update each weight using the learning rate and feature value
+        for feature in features:
+            self.weights[feature] += self.alpha * difference * features[feature]
 
     def final(self, state):
         "Called at the end of each game."
@@ -181,6 +260,8 @@ class ApproximateQAgent(PacmanQAgent):
 
         # did we finish training?
         if self.episodesSoFar == self.numTraining:
-            # you might want to print your weights here for debugging
-            "*** YOUR CODE HERE ***"
-            pass
+            print("Training completed. Final Q-values:")
+            for state_action, value in self.qValues.items():
+                print("State-Action: %s, Q-value: %s" % (state_action, value))
+
+
