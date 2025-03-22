@@ -1,0 +1,90 @@
+PSEUDO-CODE FOR Gridworld.__init__
+
+CONSTRUCTOR(grid):
+    // Initialize grid layout
+    IF grid is list-type:
+        CONVERT TO Grid object
+    SET self.grid = processed grid
+
+    // Configure default parameters
+    SET self.livingReward = 0.0  // Base reward per step
+    SET self.noise = 0.2         // Action failure probability
+
+    // State space configuration
+    INITIALIZE terminal state marker
+    IDENTIFY start position 'S' in grid
+    CATALOG accessible grid cells (# = walls)
+
+METHOD getQValue(state, action):
+    // Convert state to hashable format for dictionary lookup
+    PROCESSED_STATE = make_hashable(state)
+    
+    // Retrieve stored Q-value or return default
+    IF (PROCESSED_STATE, action) NOT IN self.qValues:
+        RETURN 0.0  // Default value for missing entries
+    ELSE:
+        RETURN self.qValues[(PROCESSED_STATE, action)]
+
+METHOD computeValueFromQValue(state):
+    // Convert state to hashable format
+    PROCESSED_STATE = make_hashable(state)
+    
+    // Initialize maximum value
+    MAX_VALUE = -infinity
+    
+    // Iterate through legal actions
+    FOR action IN self.getLegalActions(state):
+        CURRENT_Q = self.getQValue(state, action)
+        IF CURRENT_Q > MAX_VALUE:
+            MAX_VALUE = CURRENT_Q
+    
+    // Handle case with no legal actions
+    IF MAX_VALUE == -infinity:
+        RETURN 0.0
+    ELSE:
+        RETURN MAX_VALUE
+
+METHOD computeActionFromQValues(state):
+    // Convert state to hashable format
+    PROCESSED_STATE = make_hashable(state)
+    
+    // Initialize tracking variables
+    MAX_Q = -infinity
+    BEST_ACTIONS = []
+    
+    // Evaluate all legal actions
+    FOR action IN self.getLegalActions(state):
+        CURRENT_Q = self.getQValue(state, action)
+        IF CURRENT_Q > MAX_Q:
+            MAX_Q = CURRENT_Q
+            BEST_ACTIONS = [action]
+        ELIF CURRENT_Q == MAX_Q:
+            APPEND action TO BEST_ACTIONS
+    
+    // Handle no legal actions case
+    IF LENGTH(BEST_ACTIONS) == 0:
+        RETURN None
+    
+    // Random selection from best actions
+    RETURN RANDOM CHOICE FROM BEST_ACTIONS
+
+METHOD getAction(state):
+    // Exploration vs exploitation decision
+    GENERATE RANDOM value between 0 and 1
+    IF value < explorationProbability (epsilon):
+        RETURN RANDOM choice from self.getLegalActions(state)
+    ELSE:
+        RETURN self.computeActionFromQValues(state)
+
+METHOD update(state, action, nextState, reward):
+    // Q-learning update rule
+    SAMPLE = reward + (gamma * maxQValue(nextState))
+    CURRENT_Q = self.getQValue(state, action)
+    NEW_Q = (1 - alpha) * CURRENT_Q + alpha * SAMPLE
+    
+    // Update Q-value storage
+    PROCESSED_STATE = make_hashable(state)
+    STORE (PROCESSED_STATE, action) -> NEW_Q IN self.qValues
+    
+    // Return updated value for verification
+    RETURN NEW_Q

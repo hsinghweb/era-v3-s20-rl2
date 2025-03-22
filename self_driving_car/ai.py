@@ -17,6 +17,9 @@ class Network(nn.Module):
         self.fc2 = nn.Linear(128, 128)
         self.fc3 = nn.Linear(128, nb_action)
     
+    def __repr__(self):
+        return super().__repr__() + f"\nArchitecture:\n- fc1: {self.input_size} -> 128\n- fc2: 128 -> 128\n- fc3: 128 -> {self.nb_action}"
+    
     def forward(self, state):
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
