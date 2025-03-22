@@ -51,9 +51,17 @@ def init():
     global goal_x
     global goal_y
     global first_update
-    sand = np.zeros((longueur,largeur))
+    global longueur
+    global largeur
+    # Initialize sand array with window dimensions
+    longueur = int(Config.get('graphics', 'width'))
+    largeur = int(Config.get('graphics', 'height'))
+    sand = np.zeros((longueur, largeur))
     img = PILImage.open("./images/mask.png").convert('L')
+    # Resize image to match window dimensions
+    img = img.resize((longueur, largeur))
     sand = np.asarray(img)/255
+    sand = sand.T  # Transpose to match width/height dimensions
     goal_x = 1000
     goal_y = 520
     first_update = False
@@ -88,14 +96,39 @@ class Car(Widget):
 
     def move(self, rotation):
         self.pos = Vector(*self.velocity) + self.pos
+        # Clamp car position immediately after movement
+        self.x = min(max(self.x, 10), longueur - 10)
+        self.y = min(max(self.y, 10), largeur - 10)
         self.rotation = rotation
         self.angle = self.angle + self.rotation
         self.sensor1 = Vector(30, 0).rotate(self.angle) + self.pos
         self.sensor2 = Vector(30, 0).rotate((self.angle+30)%360) + self.pos
         self.sensor3 = Vector(30, 0).rotate((self.angle-30)%360) + self.pos
-        self.signal1 = int(np.sum(sand[int(self.sensor1_x)-10:int(self.sensor1_x)+10, int(self.sensor1_y)-10:int(self.sensor1_y)+10]))/400.
-        self.signal2 = int(np.sum(sand[int(self.sensor2_x)-10:int(self.sensor2_x)+10, int(self.sensor2_y)-10:int(self.sensor2_y)+10]))/400.
-        self.signal3 = int(np.sum(sand[int(self.sensor3_x)-10:int(self.sensor3_x)+10, int(self.sensor3_y)-10:int(self.sensor3_y)+10]))/400.
+        
+        # Ensure sensor positions are within bounds
+        self.sensor1_x = min(max(int(self.sensor1_x), 10), longueur - 10)
+        self.sensor1_y = min(max(int(self.sensor1_y), 10), largeur - 10)
+        self.sensor2_x = min(max(int(self.sensor2_x), 10), longueur - 10)
+        self.sensor2_y = min(max(int(self.sensor2_y), 10), largeur - 10)
+        self.sensor3_x = min(max(int(self.sensor3_x), 10), longueur - 10)
+        self.sensor3_y = min(max(int(self.sensor3_y), 10), largeur - 10)
+        
+        # Calculate signals using bounded sensor positions
+        if self.sensor1_x < 10 or self.sensor1_x > longueur-10 or self.sensor1_y < 10 or self.sensor1_y > largeur-10:
+            self.signal1 = 1.
+        else:
+            self.signal1 = int(np.sum(sand[int(self.sensor1_y)-10:int(self.sensor1_y)+10, int(self.sensor1_x)-10:int(self.sensor1_x)+10]))/400.
+            
+        if self.sensor2_x < 10 or self.sensor2_x > longueur-10 or self.sensor2_y < 10 or self.sensor2_y > largeur-10:
+            self.signal2 = 1.
+        else:
+            self.signal2 = int(np.sum(sand[int(self.sensor2_y)-10:int(self.sensor2_y)+10, int(self.sensor2_x)-10:int(self.sensor2_x)+10]))/400.
+            
+        if self.sensor3_x < 10 or self.sensor3_x > longueur-10 or self.sensor3_y < 10 or self.sensor3_y > largeur-10:
+            self.signal3 = 1.
+        else:
+            self.signal3 = int(np.sum(sand[int(self.sensor3_y)-10:int(self.sensor3_y)+10, int(self.sensor3_x)-10:int(self.sensor3_x)+10]))/400.
+        
         if self.sensor1_x>longueur-10 or self.sensor1_x<10 or self.sensor1_y>largeur-10 or self.sensor1_y<10:
             self.signal1 = 10.
         if self.sensor2_x>longueur-10 or self.sensor2_x<10 or self.sensor2_y>largeur-10 or self.sensor2_y<10:
@@ -125,7 +158,6 @@ class Game(Widget):
         self.car.velocity = Vector(6, 0)
 
     def update(self, dt):
-
         global brain
         global last_reward
         global scores
@@ -136,44 +168,49 @@ class Game(Widget):
         global largeur
         global swap
         
-
-        longueur = self.width
-        largeur = self.height
+        longueur = int(Config.get('graphics', 'width'))
+        largeur = int(Config.get('graphics', 'height'))
         if first_update:
             init()
 
-        xx = goal_x - self.car.x
-        yy = goal_y - self.car.y
+        # Ensure car position stays within bounds
+        car_x = min(max(int(self.car.x), 10), longueur - 10)
+        car_y = min(max(int(self.car.y), 10), largeur - 10)
+        
+        # Update car position to stay within bounds
+        self.car.x = car_x
+        self.car.y = car_y
+
+        xx = goal_x - car_x
+        yy = goal_y - car_y
         orientation = Vector(*self.car.velocity).angle((xx,yy))/180.
         last_signal = [self.car.signal1, self.car.signal2, self.car.signal3, orientation, -orientation]
         action = brain.update(last_reward, last_signal)
         scores.append(brain.score())
         rotation = action2rotation[action]
         self.car.move(rotation)
-        distance = np.sqrt((self.car.x - goal_x)**2 + (self.car.y - goal_y)**2)
+        distance = np.sqrt((car_x - goal_x)**2 + (car_y - goal_y)**2)
         self.ball1.pos = self.car.sensor1
         self.ball2.pos = self.car.sensor2
         self.ball3.pos = self.car.sensor3
 
-        if sand[int(self.car.x),int(self.car.y)] > 0:
+        # Ensure coordinates are within bounds before accessing sand array
+        if 0 <= car_x < longueur and 0 <= car_y < largeur and sand[car_x, car_y] > 0:
             self.car.velocity = Vector(0.5, 0).rotate(self.car.angle)
-            print(1, goal_x, goal_y, distance, int(self.car.x),int(self.car.y), im.read_pixel(int(self.car.x),int(self.car.y)))
-            
+            print(1, goal_x, goal_y, distance, car_x, car_y, im.read_pixel(car_x, car_y))
             last_reward = -1
-        else: # otherwise
+        else:
             self.car.velocity = Vector(2, 0).rotate(self.car.angle)
             last_reward = -0.15
-            print(0, goal_x, goal_y, distance, int(self.car.x),int(self.car.y), im.read_pixel(int(self.car.x),int(self.car.y)))
+            print(0, goal_x, goal_y, distance, car_x, car_y, im.read_pixel(car_x, car_y))
             if distance < last_distance:
                 last_reward = 0.1
-            # else:
-            #     last_reward = last_reward +(-0.2)
 
-        if self.car.x < 5:
-            self.car.x = 5
+        if self.car.x < 10:
+            self.car.x = 10
             last_reward = -1
-        if self.car.x > self.width - 5:
-            self.car.x = self.width - 5
+        if self.car.x > self.width - 10:
+            self.car.x = self.width - 10
             last_reward = -1
         if self.car.y < 5:
             self.car.y = 5

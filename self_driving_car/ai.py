@@ -62,9 +62,10 @@ class Dqn():
         self.last_reward = 0
     
     def select_action(self, state):
-        probs = F.softmax(self.model(Variable(state, volatile = True))*100) # T=100
-        action = probs.multinomial(1)
-        return action.data[0,0]
+        with torch.no_grad():
+            probs = F.softmax(self.model(state)*100, dim=1) # T=100
+            action = probs.multinomial(1)
+            return action.data[0,0]
     
     def learn(self, batch_state, batch_next_state, batch_reward, batch_action):
         outputs = self.model(batch_state).gather(1, batch_action.unsqueeze(1)).squeeze(1)
