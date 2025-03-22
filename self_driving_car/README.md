@@ -1,42 +1,66 @@
 # 🚗 AI-Powered Self-Driving Car Simulation 🏎️  
 
-This project implements a **self-driving car simulation** using **Deep Q-Learning (DQN)** and visualizes its learning process with **Kivy**. The AI agent learns to navigate a track by using sensor inputs and optimizing its movement through reinforcement learning.  
-
-## 📌 Features  
-✅ **Virtual Environment** - The car navigates based on sensor inputs.  
-✅ **Deep Q-Learning (DQN)** - AI learns to drive using reinforcement learning.  
-✅ **Replay Memory & Exploration** - Ensures better decision-making.  
-✅ **Dynamic Reward System** - Optimized for better training efficiency.  
-✅ **Neural Network Enhancement** - Added extra layers to improve performance.  
-✅ **Debugging & Fixes** - Fixed incorrect car positioning, transposed matrices, and tuned hyperparameters.  
+## 📌 Technical Overview  
+**State Space**: 5-dimensional input (3 sensors + orientation + velocity)  
+**Action Space**: 3 actions (straight, left, right)  
+**Network Architecture**:  
+```
+Input(5) → FC128 → ReLU → FC128 → ReLU → Output(3)
+```
 
 ## 🛠️ Installation  
-
-### 🔹 Prerequisites  
-- Python 3.8+  
-- PyTorch  
-- Kivy  
-- NumPy  
-- Matplotlib  
-- PIL (Pillow)  
-
-### 🔹 Setup  
-Clone the repository and install dependencies:  
 ```bash
-git clone https://github.com/yourusername/self-driving-car-ai.git  
-cd self-driving-car-ai  
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate
+
+# Install dependencies
+pip install torch==2.0.1 kivy==2.2.1 numpy==1.24.3 matplotlib==3.7.2 pillow==10.0.0
+
+# Run simulation
 python map.py
 ```
 
-🎥 Video Demonstration
-[**AI-Powered Self-Driving Car Simulation**](https://youtu.be/trmjy1SSe3M?si=YfcZDIYU3M_6hSze)
-📌 Watch Here
+## 🧠 DQN Implementation  
+**Key Components**:  
+- Experience Replay (capacity=100,000)  
+- ε-Greedy Exploration (ε=0.1)  
+- Target Network Update Frequency: Every 1000 steps  
 
-📈 Next Steps</br>
-🔹 Introduce dynamic obstacles to increase challenge.</br>
-🔹 Implement more complex tracks for advanced training.</br>
-🔹 Integrate OpenCV for real-world applications.</br>
+**Hyperparameters**:  
+```
+Learning Rate: 0.001  
+Discount Factor (γ): 0.99  
+Batch Size: 500  
+Replay Memory: 100,000  
+Target Update: 1000 steps
+```
 
-📩 Let's Connect
-💬 LinkedIn: Your Profile
-📧 Email: your.email@example.com
+## 🏎️ Reward System  
+- **Base Reward**: +1 per frame survived  
+- **Penalties**:  
+  - Collision: -50  
+  - Off-track: -20  
+  - Sharp turns: -5  
+- **Progressive Bonus**:  
+  - Maintain speed > 0.8: +2/frame  
+  - Center lane position: +1/frame
+
+## 📈 Training Protocol  
+1. Initial Exploration: 5000 random actions  
+2. Gradual Policy Adoption:  
+   - Start ε=1.0 (full exploration)  
+   - Linearly decay to ε=0.1 over 50k steps  
+3. Target Network Updates:  
+   - Hard update every 1000 steps  
+
+## 📂 Project Structure  
+```
+self_driving_car/
+├── ai.py            # DQN agent implementation
+├── map.py           # Simulation environment
+├── car.kv           # Kivy UI configuration
+├── images/          # Asset storage
+└── README.md        # Project documentation
+```
+
