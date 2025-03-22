@@ -1,7 +1,3 @@
-# AI for Self Driving Car
-
-# Importing the libraries
-
 import numpy as np
 import random
 import os
@@ -9,10 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import torch.autograd as autograd
 from torch.autograd import Variable
-
-# Creating the architecture of the Neural Network
 
 class Network(nn.Module):
     
@@ -30,8 +23,6 @@ class Network(nn.Module):
         q_values = self.fc3(x)
         return q_values
 
-# Implementing Experience Replay
-
 class ReplayMemory(object):
     
     def __init__(self, capacity):
@@ -46,8 +37,6 @@ class ReplayMemory(object):
     def sample(self, batch_size):
         samples = zip(*random.sample(self.memory, batch_size))
         return map(lambda x: Variable(torch.cat(x, 0)), samples)
-
-# Implementing Deep Q Learning
 
 class Dqn():
     
@@ -97,12 +86,12 @@ class Dqn():
     def save(self):
         torch.save({'state_dict': self.model.state_dict(),
                     'optimizer' : self.optimizer.state_dict(),
-                   }, 'last_brain.pth')
+                   }, 'model.pth')
     
     def load(self):
-        if os.path.isfile('last_brain.pth'):
+        if os.path.isfile('model.pth'):
             print("=> loading checkpoint... ")
-            checkpoint = torch.load('last_brain.pth')
+            checkpoint = torch.load('model.pth')
             self.model.load_state_dict(checkpoint['state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer'])
             print("done !")
